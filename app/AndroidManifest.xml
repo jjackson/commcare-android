@@ -180,6 +180,10 @@
         <activity android:name="org.commcare.activities.StandardHomeActivity" />
         <activity android:name="org.commcare.activities.RootMenuHomeActivity" />
         <activity android:name="org.commcare.activities.MenuActivity" />
+        <activity 
+            android:name="org.commcare.activities.CustomUIActivity"
+            android:label="@string/application_name"
+            android:configChanges="orientation|screenSize" />
         <activity
             android:name="org.commcare.activities.connect.ConnectActivity"
             android:exported="false"

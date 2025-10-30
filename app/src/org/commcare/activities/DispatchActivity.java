@@ -19,6 +19,7 @@ import org.commcare.android.database.global.models.ApplicationRecord;
 import org.commcare.android.database.user.models.SessionStateDescriptor;
 import org.commcare.connect.ConnectJobHelper;
 import org.commcare.connect.ConnectNavHelper;
+import org.commcare.customui.CustomUIHelper;
 import org.commcare.dalvik.R;
 import org.commcare.preferences.DeveloperPreferences;
 import org.commcare.recovery.measures.ExecuteRecoveryMeasuresActivity;
@@ -341,6 +342,16 @@ public class DispatchActivity extends AppCompatActivity {
     }
 
     private void launchHomeScreen() {
+        // Check if custom UI is enabled for this app
+        if (CustomUIHelper.isCustomUIEnabled(this)) {
+            Log.d(TAG, "Custom UI detected, launching CustomUIActivity");
+            CustomUIHelper.launchCustomUI(this);
+            // Close DispatchActivity so back button doesn't return here
+            finish();
+            return;
+        }
+        
+        // Standard CommCare UI launch
         Intent i;
         if (useRootMenuHomeActivity()) {
             i = new Intent(this, RootMenuHomeActivity.class);

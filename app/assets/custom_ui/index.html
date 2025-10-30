@@ -1,0 +1,592 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CommCare Custom UI POC</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: #f5f5f5;
+            padding: 16px;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+
+        .header {
+            background: #004ebc;
+            color: white;
+            padding: 20px;
+        }
+
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 8px;
+        }
+
+        .header p {
+            opacity: 0.9;
+            font-size: 14px;
+        }
+
+        .content {
+            padding: 20px;
+        }
+
+        .section {
+            margin-bottom: 24px;
+        }
+
+        .section h2 {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #004ebc;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            margin-bottom: 6px;
+            color: #555;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: #004ebc;
+        }
+
+        button {
+            background: #004ebc;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            width: 100%;
+            margin-top: 8px;
+        }
+
+        button:hover {
+            background: #003a8c;
+        }
+
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        button.secondary {
+            background: #6c757d;
+            margin-top: 8px;
+        }
+
+        button.secondary:hover {
+            background: #5a6268;
+        }
+
+        .case-list {
+            list-style: none;
+        }
+
+        .case-item {
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            margin-bottom: 8px;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .case-item:hover {
+            background: #f8f9fa;
+        }
+
+        .case-item h3 {
+            font-size: 16px;
+            color: #333;
+            margin-bottom: 4px;
+        }
+
+        .case-item p {
+            font-size: 14px;
+            color: #666;
+        }
+
+        .status {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: 500;
+        }
+
+        .status.open {
+            background: #d4edda;
+            color: #155724;
+        }
+
+        .status.closed {
+            background: #f8d7da;
+            color: #721c24;
+        }
+
+        .message {
+            padding: 12px;
+            border-radius: 4px;
+            margin-bottom: 16px;
+        }
+
+        .message.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .message.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .message.info {
+            background: #d1ecf1;
+            color: #0c5460;
+            border: 1px solid #bee5eb;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+
+        .tabs {
+            display: flex;
+            border-bottom: 2px solid #ddd;
+            margin-bottom: 20px;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 12px;
+            text-align: center;
+            cursor: pointer;
+            background: transparent;
+            border: none;
+            border-bottom: 3px solid transparent;
+            color: #666;
+            font-size: 14px;
+            font-weight: 500;
+        }
+
+        .tab.active {
+            color: #004ebc;
+            border-bottom-color: #004ebc;
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <!-- React and ReactDOM from CDN (for POC simplicity) -->
+    <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    
+    <!-- Babel Standalone for JSX transformation -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+    <script type="text/babel">
+        const { useState, useEffect } = React;
+
+        // CommCare API Wrapper
+        const commcareAPI = {
+            log: (level, message) => {
+                console[level](message);
+                if (window.CommCareAPI) {
+                    window.CommCareAPI.log(level, message);
+                }
+            },
+
+            getCurrentUser: async () => {
+                try {
+                    const result = window.CommCareAPI.getCurrentUser();
+                    return JSON.parse(result);
+                } catch (error) {
+                    commcareAPI.log('error', 'Error getting user: ' + error.message);
+                    throw error;
+                }
+            },
+
+            getCases: async () => {
+                try {
+                    const result = window.CommCareAPI.getCases();
+                    return JSON.parse(result);
+                } catch (error) {
+                    commcareAPI.log('error', 'Error getting cases: ' + error.message);
+                    throw error;
+                }
+            },
+
+            getCase: async (caseId) => {
+                try {
+                    const result = window.CommCareAPI.getCase(caseId);
+                    return JSON.parse(result);
+                } catch (error) {
+                    commcareAPI.log('error', 'Error getting case: ' + error.message);
+                    throw error;
+                }
+            },
+
+            getForm: async (xmlns) => {
+                try {
+                    const result = window.CommCareAPI.getForm(xmlns);
+                    return JSON.parse(result);
+                } catch (error) {
+                    commcareAPI.log('error', 'Error getting form: ' + error.message);
+                    throw error;
+                }
+            },
+
+            submitForm: async (xmlns, answers) => {
+                try {
+                    const formData = {
+                        xmlns: xmlns,
+                        answers: answers
+                    };
+                    const result = window.CommCareAPI.submitForm(JSON.stringify(formData));
+                    return JSON.parse(result);
+                } catch (error) {
+                    commcareAPI.log('error', 'Error submitting form: ' + error.message);
+                    throw error;
+                }
+            }
+        };
+
+        // Main App Component
+        function App() {
+            const [activeTab, setActiveTab] = useState('form');
+            const [user, setUser] = useState(null);
+            const [loading, setLoading] = useState(true);
+
+            useEffect(() => {
+                loadUser();
+            }, []);
+
+            const loadUser = async () => {
+                try {
+                    const userData = await commcareAPI.getCurrentUser();
+                    setUser(userData);
+                    setLoading(false);
+                } catch (error) {
+                    console.error('Error loading user:', error);
+                    setLoading(false);
+                }
+            };
+
+            if (loading) {
+                return (
+                    <div className="container">
+                        <div className="loading">Loading...</div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="container">
+                    <div className="header">
+                        <h1>CommCare Custom UI POC</h1>
+                        <p>Logged in as: {user ? user.username : 'Unknown'}</p>
+                    </div>
+                    
+                    <div className="content">
+                        <div className="tabs">
+                            <button 
+                                className={`tab ${activeTab === 'form' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('form')}
+                            >
+                                Register Patient
+                            </button>
+                            <button 
+                                className={`tab ${activeTab === 'cases' ? 'active' : ''}`}
+                                onClick={() => setActiveTab('cases')}
+                            >
+                                View Cases
+                            </button>
+                        </div>
+
+                        {activeTab === 'form' && <PatientRegistrationForm />}
+                        {activeTab === 'cases' && <CaseList />}
+                    </div>
+                </div>
+            );
+        }
+
+        // Patient Registration Form Component
+        function PatientRegistrationForm() {
+            const [formData, setFormData] = useState({
+                patient_name: '',
+                patient_age: '',
+                patient_gender: '',
+                patient_id: '',
+                registration_date: new Date().toISOString().split('T')[0]
+            });
+            const [submitting, setSubmitting] = useState(false);
+            const [message, setMessage] = useState(null);
+
+            const handleChange = (e) => {
+                setFormData({
+                    ...formData,
+                    [e.target.name]: e.target.value
+                });
+            };
+
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setSubmitting(true);
+                setMessage(null);
+
+                try {
+                    // Use a sample form xmlns for POC
+                    const xmlns = 'http://commcarehq.org/custom-ui-poc/patient-registration';
+                    
+                    const result = await commcareAPI.submitForm(xmlns, formData);
+                    
+                    if (result.success) {
+                        setMessage({
+                            type: 'success',
+                            text: 'Patient registered successfully! Form will sync to CommCareHQ.'
+                        });
+                        // Reset form
+                        setFormData({
+                            patient_name: '',
+                            patient_age: '',
+                            patient_gender: '',
+                            patient_id: '',
+                            registration_date: new Date().toISOString().split('T')[0]
+                        });
+                    } else {
+                        setMessage({
+                            type: 'error',
+                            text: 'Error: ' + (result.error || 'Unknown error')
+                        });
+                    }
+                } catch (error) {
+                    setMessage({
+                        type: 'error',
+                        text: 'Failed to submit form: ' + error.message
+                    });
+                } finally {
+                    setSubmitting(false);
+                }
+            };
+
+            return (
+                <div className="section">
+                    <h2>Patient Registration</h2>
+                    
+                    {message && (
+                        <div className={`message ${message.type}`}>
+                            {message.text}
+                        </div>
+                    )}
+
+                    <form onSubmit={handleSubmit}>
+                        <div className="form-group">
+                            <label>Patient ID</label>
+                            <input
+                                type="text"
+                                name="patient_id"
+                                value={formData.patient_id}
+                                onChange={handleChange}
+                                required
+                                placeholder="Enter unique patient ID"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Patient Name</label>
+                            <input
+                                type="text"
+                                name="patient_name"
+                                value={formData.patient_name}
+                                onChange={handleChange}
+                                required
+                                placeholder="Enter patient full name"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Age</label>
+                            <input
+                                type="number"
+                                name="patient_age"
+                                value={formData.patient_age}
+                                onChange={handleChange}
+                                required
+                                min="0"
+                                max="150"
+                                placeholder="Enter age"
+                            />
+                        </div>
+
+                        <div className="form-group">
+                            <label>Gender</label>
+                            <select
+                                name="patient_gender"
+                                value={formData.patient_gender}
+                                onChange={handleChange}
+                                required
+                            >
+                                <option value="">Select gender</option>
+                                <option value="male">Male</option>
+                                <option value="female">Female</option>
+                                <option value="other">Other</option>
+                            </select>
+                        </div>
+
+                        <div className="form-group">
+                            <label>Registration Date</label>
+                            <input
+                                type="date"
+                                name="registration_date"
+                                value={formData.registration_date}
+                                onChange={handleChange}
+                                required
+                            />
+                        </div>
+
+                        <button type="submit" disabled={submitting}>
+                            {submitting ? 'Submitting...' : 'Register Patient'}
+                        </button>
+                    </form>
+                </div>
+            );
+        }
+
+        // Case List Component
+        function CaseList() {
+            const [cases, setCases] = useState([]);
+            const [loading, setLoading] = useState(true);
+            const [error, setError] = useState(null);
+            const [selectedCase, setSelectedCase] = useState(null);
+
+            useEffect(() => {
+                loadCases();
+            }, []);
+
+            const loadCases = async () => {
+                setLoading(true);
+                setError(null);
+                try {
+                    const casesData = await commcareAPI.getCases();
+                    setCases(casesData);
+                } catch (err) {
+                    setError('Failed to load cases: ' + err.message);
+                } finally {
+                    setLoading(false);
+                }
+            };
+
+            const handleCaseClick = (caseItem) => {
+                setSelectedCase(selectedCase?.caseId === caseItem.caseId ? null : caseItem);
+            };
+
+            if (loading) {
+                return <div className="loading">Loading cases...</div>;
+            }
+
+            if (error) {
+                return (
+                    <div className="section">
+                        <div className="message error">{error}</div>
+                        <button onClick={loadCases} className="secondary">Retry</button>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="section">
+                    <h2>Cases ({cases.length})</h2>
+                    
+                    {cases.length === 0 ? (
+                        <div className="message info">
+                            No cases found. Register a patient to create a case.
+                        </div>
+                    ) : (
+                        <ul className="case-list">
+                            {cases.map((caseItem) => (
+                                <li 
+                                    key={caseItem.caseId} 
+                                    className="case-item"
+                                    onClick={() => handleCaseClick(caseItem)}
+                                >
+                                    <h3>
+                                        {caseItem.name || 'Unnamed Case'}
+                                        <span className={`status ${caseItem.status}`} style={{float: 'right'}}>
+                                            {caseItem.status}
+                                        </span>
+                                    </h3>
+                                    <p>Type: {caseItem.caseType}</p>
+                                    <p>ID: {caseItem.caseId}</p>
+                                    
+                                    {selectedCase?.caseId === caseItem.caseId && (
+                                        <div style={{marginTop: '12px', paddingTop: '12px', borderTop: '1px solid #ddd'}}>
+                                            <h4 style={{fontSize: '14px', marginBottom: '8px'}}>Properties:</h4>
+                                            <ul style={{paddingLeft: '20px', fontSize: '13px'}}>
+                                                {Object.entries(caseItem.properties).map(([key, value]) => (
+                                                    <li key={key}><strong>{key}:</strong> {value}</li>
+                                                ))}
+                                            </ul>
+                                        </div>
+                                    )}
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                    
+                    <button onClick={loadCases} className="secondary">
+                        Refresh Cases
+                    </button>
+                </div>
+            );
+        }
+
+        // Render the app
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>

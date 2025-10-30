@@ -1,0 +1,8 @@
+{
+  "customUI": {
+    "enabled": true,
+    "entrypoint": "custom_ui/index.html",
+    "version": "1.0.0",
+    "description": "Custom CommCare UI POC - Patient Registration"
+  }
+}
